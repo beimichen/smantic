@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smantic"
-version = "0.1.0"
+version = "0.1.1"
 description = "Structure-aware semantic chunking, minus the heavyweight stack."
 readme = "README.md"
 requires-python = ">=3.10"

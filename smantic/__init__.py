@@ -35,7 +35,7 @@ from .adapters import (
 from .chunker import Chunk, StructureAwareChunker
 from .ir import BBox, Document, Element, Page
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "chunk_document",
