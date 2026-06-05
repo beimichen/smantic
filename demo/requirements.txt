@@ -1,0 +1,7 @@
+# Dependencies for the Hugging Face Space (see demo/README.md).
+#
+# Gradio itself is supplied by the Space runtime via `sdk_version` in the Space
+# README, so it is intentionally NOT pinned here. We only need smantic with the
+# [onnx] extra (the local semantic-embedding backend). Installs the latest
+# release from PyPI; pin (e.g. ==0.1.0) for reproducibility.
+smantic[onnx]
