@@ -41,15 +41,66 @@ the semantic ones.
 
 ## Quick start
 
+Feed it a Markdown string (or file) and smantic works out the structure for you:
+
 ```python
 import smantic
 
-chunks = smantic.chunk_markdown(open("notes.md").read())
+md = r"""
+# Mixed Precision Training
+
+Training in FP16 halves memory but underflows small gradients; loss scaling
+multiplies the loss before backprop so they stay representable.
+
+| Format | Bits | Exponent | Mantissa |
+|--------|------|----------|----------|
+| FP32   | 32   | 8        | 23       |
+| FP16   | 16   | 5        | 10       |
+
+The scaled loss keeps the same direction:
+
+$$ \mathcal{L}_{scaled} = s \cdot \mathcal{L} $$
+"""
+
+chunks = smantic.chunk_markdown(md)
 
 for c in chunks:
-    print(c.sequence, c.dominant_type, c.token_count, c.metadata.get("nearest_heading"))
-    print(c.content[:120])
+    print(c.sequence, c.dominant_type, f"{c.token_count}t", "|", c.metadata.get("nearest_heading"))
 ```
+
+```text
+0 prose 73t | Mixed Precision Training
+1 table_block 39t | Mixed Precision Training
+2 formula_block 28t | Mixed Precision Training
+```
+
+The heading, prose, table, and formula each became their own chunk: prose is cut
+on semantic boundaries, while the table and formula stay intact as atomic blocks,
+and every chunk carries the heading trail. Each item is a `Chunk`;
+`chunk.to_dict()` gives a JSON-ready record (here the table chunk):
+
+```python
+>>> chunks[1].to_dict()
+{
+  "content": "| Format | Bits | Exponent | Mantissa |\n|--------|---...",
+  "token_count": 39,
+  "page_numbers": [1],
+  "span_start": 0, "span_end": 159,
+  "chunking_method": "atomic_block",
+  "dominant_type": "table_block",
+  "parent_chunk_id": None, "block_sequence": None,
+  "has_code": False, "has_math": False, "has_table": True,
+  "metadata": {
+    "element_type": "table",
+    "heading_trail": ["Mixed Precision Training"],
+    "heading_level": 1,
+    "nearest_heading": "Mixed Precision Training",
+  },
+  "sequence": 1,
+}
+```
+
+Reading from a file is the same: `smantic.chunk_markdown(open("notes.md").read())`.
 
 Already have a parsed document? Feed it straight in:
 
@@ -72,6 +123,18 @@ chunks = smantic.chunk_document(smantic.from_nopaddle(doc))   # regions -> chunk
 `from_nopaddle` reads a NoPaddle `ParsedDocument` (object, dict, or JSON) with no
 conversion step: the two projects share the same region shape, and smantic's IR
 accepts NoPaddle's `regions` key directly.
+
+A table NoPaddle detects survives intact: it lands in one `table_block` chunk
+(or, if it is huge, splits by row group with the header repeated), never shredded
+into prose:
+
+```python
+chunks = smantic.chunk_document(smantic.from_nopaddle(doc))
+
+tables = [c for c in chunks if c.dominant_type == "table_block"]
+print(tables[0].has_table)   # True
+print(tables[0].content)     # the GFM table, kept whole
+```
 
 ## Command line
 
