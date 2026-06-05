@@ -70,6 +70,21 @@ def test_pipe_without_separator_is_prose_not_table():
     assert _types(els) == ["text"]
 
 
+def test_separator_less_pipe_table_is_detected():
+    # A VLM can emit a pipe table without the |---| row; group it as a table,
+    # not prose, as long as there are >=2 pipe-delimited rows.
+    md = "| Format | Bits |\n| FP32 | 32 |\n| FP16 | 16 |\n"
+    els = parse_markdown(md)
+    assert _types(els) == ["table"]
+    assert els[0].content.count("\n") == 2  # all three rows kept in one block
+
+
+def test_prose_with_pipes_across_lines_stays_prose():
+    # Lines that merely contain a pipe (not wrapped like |...|) are not a table.
+    els = parse_markdown("see a | b here\nand c | d there\n")
+    assert _types(els) == ["text"]
+
+
 def test_display_math_single_and_multiline():
     single = parse_markdown("$$ E = mc^2 $$\n")
     assert _types(single) == ["formula"] and single[0].content == "E = mc^2"

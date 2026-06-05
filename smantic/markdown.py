@@ -32,6 +32,7 @@ _FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
 _BULLET_RE = re.compile(r"^(\s*)[-*+]\s+(.*)$")
 _ORDERED_RE = re.compile(r"^(\s*)\d+[.)]\s+(.*)$")
 _TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)+\|?\s*$")
+_PIPE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")  # a GFM-style row: starts and ends with |
 _IMAGE_ONLY_RE = re.compile(r"^\s*!\[([^\]]*)\]\([^)]*\)\s*$")
 _HR_RE = re.compile(r"^\s*([-*_])(\s*\1){2,}\s*$")
 _SETEXT_RE = re.compile(r"^\s*(=+|-+)\s*$")
@@ -102,10 +103,13 @@ def parse_markdown(text: str, *, page: int = 1) -> list[Element]:
             i += 1
             continue
 
-        # Pipe table: a row with a pipe immediately followed by a separator row.
-        if "|" in line and i + 1 < n and _TABLE_SEP_RE.match(lines[i + 1]):
-            table_lines = [line, lines[i + 1]]
-            i += 2
+        # Pipe table: a GFM header + |---| separator, OR a run of two or more
+        # pipe-delimited rows. The second form keeps a separator-less table (as a
+        # VLM can emit) grouped as one atomic block instead of shredding it into
+        # prose. A lone pipe in a sentence stays prose (needs >=2 |...| rows).
+        if _is_table_start(lines, i):
+            table_lines = [lines[i]]
+            i += 1
             while i < n and lines[i].strip() and "|" in lines[i]:
                 table_lines.append(lines[i])
                 i += 1
@@ -258,11 +262,26 @@ def _starts_block(lines, i, in_list: bool = False) -> bool:
         return True
     if _HR_RE.match(line):
         return True
-    if "|" in line and i + 1 < len(lines) and _TABLE_SEP_RE.match(lines[i + 1]):
+    if _is_table_start(lines, i):
         return True
     if not in_list and (_BULLET_RE.match(line) or _ORDERED_RE.match(line)):
         return True
     return False
+
+
+def _is_table_start(lines, i: int) -> bool:
+    """True if a pipe table starts at ``lines[i]``.
+
+    Two accepted shapes: a GFM header followed by a ``|---|`` separator row, or a
+    run of two or more pipe-delimited rows (a separator-less table). Requiring two
+    rows for the second shape keeps a stray ``|`` in a sentence as prose.
+    """
+    line = lines[i]
+    if i + 1 >= len(lines):
+        return False
+    if "|" in line and _TABLE_SEP_RE.match(lines[i + 1]):
+        return True
+    return bool(_PIPE_ROW_RE.match(line) and _PIPE_ROW_RE.match(lines[i + 1]))
 
 
 __all__ = ["parse_markdown", "parse_full_page_output"]
