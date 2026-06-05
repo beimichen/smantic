@@ -1,0 +1,47 @@
+# Version control
+.git/
+.gitignore
+.github/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python caches / build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test & lint caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Project tests & docs (not needed in the runtime image)
+tests/
+docs/
+
+# Documentation files (keep README for image metadata)
+*.md
+!README.md
+
+# Model cache (downloaded weights — mount or download at runtime)
+.smantic_cache/
+models/cache/
+
+# Environment / secrets
+.env
+.env.*
+
+# OS cruft
+.DS_Store
+Thumbs.db
